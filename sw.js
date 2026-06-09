@@ -1,0 +1,24 @@
+{
+  "name": "Chado - Tee-Brau-Assistent",
+  "short_name": "Chado",
+  "description": "Dein persönlicher Tee-Aufbrüh-Assistent",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F5F0E8",
+  "theme_color": "#F5F0E8",
+  "orientation": "portrait",
+  "scope": ".",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
