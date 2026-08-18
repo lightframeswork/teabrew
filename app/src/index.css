@@ -1,0 +1,445 @@
+/* ------------------------------------------------------------------
+   Schrift
+   Fraunces liegt lokal im Projekt: Die App startet auch offline mit der
+   richtigen Schrift, sendet beim Laden nichts an Dritte und zeigt keinen
+   Schriftsprung nach dem ersten Frame.
+   ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/fraunces-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/fraunces-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------
+   Design tokens
+   Warm monochrome washi paper, one accent (Matcha), one signal (Hitze).
+   Every colour is defined here for light, then re-declared for dark.
+   ------------------------------------------------------------------ */
+
+@layer base {
+  :root {
+    --canvas: 247 243 235; /* Washi */
+    --surface: 253 251 246;
+    --sunken: 238 232 221;
+    --line: 226 218 204;
+    --line-strong: 209 199 182;
+
+    --ink: 28 24 21; /* 15,3:1 auf Papier */
+    --ink-2: 82 76 68; /* 7,7:1 */
+    --ink-3: 112 105 95; /* 4,9:1 – auch für 11-px-Beschriftungen tragfähig */
+
+    --accent: 79 99 39; /* Matcha */
+    --accent-on: 253 251 246;
+    --heat: 176 106 59; /* Terrakotta */
+    --danger: 158 61 48;
+
+    --shadow: 62 48 32;
+
+    /* Sortenfarben – Blattfarben, keine Markenfarben. */
+    --cat-gruentee: #5a7247;
+    --cat-schwarztee: #6b4429;
+    --cat-oolong: #9b7b4e;
+    --cat-puerh: #5c3d2e;
+    --cat-weisser-tee: #a08f63;
+    --cat-gelber-tee: #a9862f;
+    --cat-matcha: #5f8438;
+    --cat-anderer: #7a6a5c;
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+    --dur-press: 120ms;
+    --dur-quick: 180ms;
+    --dur-screen: 300ms;
+    --dur-sheet: 340ms;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    --canvas: 22 19 15; /* Sumi */
+    --surface: 31 27 22;
+    --sunken: 17 15 12;
+    --line: 48 42 35;
+    --line-strong: 68 60 49;
+
+    --ink: 242 237 228; /* 14,7:1 auf Sumi */
+    --ink-2: 167 158 146; /* 7,0:1 */
+    --ink-3: 142 133 121; /* 4,7:1 – auch auf der aufgehellten Fläche */
+
+    --accent: 160 190 106;
+    --accent-on: 20 26 10;
+    --heat: 213 145 96;
+    --danger: 214 116 100;
+
+    --shadow: 0 0 0;
+
+    --cat-gruentee: #9cb77f;
+    --cat-schwarztee: #c79466;
+    --cat-oolong: #d6b37c;
+    --cat-puerh: #b98d70;
+    --cat-weisser-tee: #d9c89a;
+    --cat-gelber-tee: #debd62;
+    --cat-matcha: #a8cc6e;
+    --cat-anderer: #b7a797;
+
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: rgb(var(--canvas));
+    color: rgb(var(--ink));
+    font-family: theme('fontFamily.sans');
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  /* Ziffern in Messwerten laufen nie um. */
+  .tnum,
+  time,
+  output {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.22);
+  }
+
+  :focus {
+    outline: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  input,
+  textarea {
+    background: transparent;
+  }
+
+  /* Ein deutlich sichtbarer Sprung zum Inhalt für Tastaturnutzung. */
+  .skip-link {
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 100;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgb(var(--ink));
+    color: rgb(var(--canvas));
+    transition: top var(--dur-quick) var(--ease-out);
+  }
+
+  .skip-link:focus-visible {
+    top: calc(var(--safe-top) + 12px);
+  }
+}
+
+@layer components {
+  .scroll-area {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .scroll-area::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Druckfeedback ab pointerdown – nie erst beim Loslassen. */
+  .pressable {
+    transition: transform var(--dur-press) var(--ease-out),
+      background-color var(--dur-quick) ease,
+      border-color var(--dur-quick) ease,
+      color var(--dur-quick) ease,
+      opacity var(--dur-quick) ease;
+    touch-action: manipulation;
+  }
+
+  .pressable:active {
+    transform: scale(0.97);
+  }
+
+  .pressable-subtle:active {
+    transform: scale(0.985);
+  }
+
+  /* Schwebende Leisten sind Material, keine Balken mit Trennlinie. */
+  .material {
+    background: rgb(var(--canvas) / 0.82);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* Inhalt löst sich unter der schwebenden Leiste auf, statt an einer Kante
+     abgeschnitten zu werden. Kein 1-px-Strich, sondern ein Verlauf. */
+  .material-bottom::before,
+  .material-top::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 28px;
+    pointer-events: none;
+  }
+
+  .material-bottom::before {
+    bottom: 100%;
+    background: linear-gradient(to top, rgb(var(--canvas)), rgb(var(--canvas) / 0));
+  }
+
+  .material-top::after {
+    top: 100%;
+    background: linear-gradient(to bottom, rgb(var(--canvas) / 0.9), rgb(var(--canvas) / 0));
+  }
+
+  /* Weicher Verlauf dort, wo Inhalt unter die Chrome-Ebene scrollt. */
+  .scroll-edge-top {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgb(var(--line));
+    background: rgb(var(--surface));
+    padding: 11px 13px;
+    transition: border-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease;
+  }
+
+  .field::placeholder {
+    color: rgb(var(--ink-3));
+  }
+
+  .field:focus-within,
+  .field:focus {
+    border-color: rgb(var(--accent) / 0.55);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.12);
+  }
+
+  /* Ein Fehler ist auch ohne Farbe erkennbar – die Meldung steht darunter.
+     Der rote Rand macht ihn zusätzlich auffindbar. */
+  .field[aria-invalid='true'] {
+    border-color: rgb(var(--danger) / 0.6);
+  }
+
+  .field[aria-invalid='true']:focus {
+    border-color: rgb(var(--danger));
+    box-shadow: 0 0 0 3px rgb(var(--danger) / 0.14);
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: var(--safe-top);
+  }
+
+  .pb-safe {
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Bewegung
+   Eintritt/Austritt laufen denselben Weg. Alles unter 340 ms.
+   ------------------------------------------------------------------ */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes push-in {
+  from {
+    opacity: 0.4;
+    transform: translate3d(22%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 0.75;
+  }
+}
+
+.anim-rise {
+  animation: rise-in 300ms var(--ease-out) both;
+}
+
+.anim-fade {
+  animation: fade-in 220ms var(--ease-out) both;
+}
+
+.anim-push {
+  animation: push-in var(--dur-screen) var(--ease-drawer) both;
+}
+
+.anim-pop {
+  animation: pop-in 200ms var(--ease-out) both;
+}
+
+.anim-sheet {
+  animation: sheet-in var(--dur-sheet) var(--ease-drawer) both;
+}
+
+.anim-breathe {
+  animation: breathe 5.5s ease-in-out infinite;
+}
+
+/* Gestaffelter Listeneintritt – kurz genug, um nie zu bremsen. */
+.stagger > * {
+  animation: rise-in 280ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 38ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .anim-rise,
+  .anim-push,
+  .anim-pop,
+  .anim-sheet,
+  .stagger > * {
+    animation: fade-in 160ms linear both;
+  }
+
+  .pressable:active,
+  .pressable-subtle:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material {
+    background: rgb(var(--canvas));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: 168 156 138;
+    --line-strong: 128 116 100;
+    --ink-2: 64 58 51;
+    --ink-3: 88 81 72;
+  }
+
+  .material {
+    background: rgb(var(--canvas));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
