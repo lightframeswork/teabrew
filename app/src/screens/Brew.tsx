@@ -6,11 +6,12 @@ import type { JournalEntry, MatchaStyle, VesselId } from '../types'
 import {
   MATCHA_PRESETS,
   buildPlan,
+  effectiveBrewing,
   infusionParams,
   matchaPreset,
   methodLabel,
 } from '../lib/brewing'
-import { celsius, duration, grams, infusionLabel, ml } from '../lib/format'
+import { celsius, duration, grams, infusionLabel, ml, overdueLabel } from '../lib/format'
 import { useTimer } from '../lib/useTimer'
 import { requestWakeLock, signalDone, signalStep } from '../lib/feedback'
 import { cn } from '../lib/cn'
@@ -31,16 +32,22 @@ export function Brew({
 }) {
   const collection = useStore((state) => state.collection)
   const settings = useStore((state) => state.settings)
+  const setBrewingOverride = useStore((state) => state.setBrewingOverride)
+  const toast = useStore((state) => state.toast)
 
   const tea = collection.find((item) => item.id === teaId) ?? libraryTea(teaId)
   const isMatcha = tea?.category === 'matcha'
 
+  const base = tea ? effectiveBrewing(tea) : null
   const [vesselId, setVesselId] = useState<VesselId>(
-    tea && tea.brewing.vessel !== 'tasse' ? tea.brewing.vessel : settings.defaultVessel
+    base && base.vessel !== 'tasse' ? base.vessel : settings.defaultVessel
   )
-  const [sizeMl, setSizeMl] = useState(tea?.brewing.vesselSizeMl ?? settings.defaultVesselSizeMl)
+  const [sizeMl, setSizeMl] = useState(base?.vesselSizeMl ?? settings.defaultVesselSizeMl)
   const [matchaStyle, setMatchaStyle] = useState<MatchaStyle>('usucha')
   const [gramsOverride, setGramsOverride] = useState<number | undefined>(undefined)
+  const [tempOverride, setTempOverride] = useState<number | undefined>(undefined)
+  const [steepOverride, setSteepOverride] = useState<number | undefined>(undefined)
+  const [fineOpen, setFineOpen] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('einrichten')
   const [stepIndex, setStepIndex] = useState(0)
@@ -56,9 +63,11 @@ export function Brew({
             sizeMl,
             overrideGrams: gramsOverride,
             matcha: matchaStyle,
+            temperatureC: tempOverride,
+            steepSeconds: steepOverride,
           })
         : null,
-    [tea, isMatcha, vesselId, sizeMl, gramsOverride, matchaStyle]
+    [tea, isMatcha, vesselId, sizeMl, gramsOverride, matchaStyle, tempOverride, steepOverride]
   )
 
   const timer = useTimer(() => {
@@ -95,6 +104,11 @@ export function Brew({
       </div>
     )
   }
+
+  const ownBrewing = tea.brewingOverride !== undefined
+  // Für Matcha gelten feste Zeremonie-Vorgaben, und ein Kaltaufguss zieht
+  // Stunden statt Sekunden – beides taugt nicht als gemerkte Einstellung.
+  const canRemember = !isMatcha && vesselId !== 'kaltaufguss' && collection.some((t) => t.id === tea.id)
 
   const steps = plan.steps
   const step = steps[stepIndex]
@@ -337,6 +351,97 @@ export function Brew({
             )}
           </section>
 
+          {canRemember && (
+            <section className="mt-6">
+              <button
+                type="button"
+                aria-expanded={fineOpen}
+                onClick={() => setFineOpen((value) => !value)}
+                className="pressable-subtle flex min-h-[44px] w-full items-center justify-between text-left text-footnote font-semibold text-ink-2"
+              >
+                Feinjustierung
+                <Icon
+                  name="runter"
+                  size={16}
+                  className={cn(
+                    'text-ink-3 transition-transform duration-200 ease-out',
+                    fineOpen && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {fineOpen && (
+                <div className="anim-fade">
+                  <Card className="divide-y divide-line">
+                    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                      <span className="text-footnote text-ink-2">Temperatur</span>
+                      <Stepper
+                        label="Temperatur"
+                        value={plan.temperatureC}
+                        display={celsius(plan.temperatureC)}
+                        canDecrease={plan.temperatureC > 40}
+                        canIncrease={plan.temperatureC < 100}
+                        onDecrease={() => setTempOverride(Math.max(40, plan.temperatureC - 5))}
+                        onIncrease={() => setTempOverride(Math.min(100, plan.temperatureC + 5))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                      <span className="text-footnote text-ink-2">Ziehzeit</span>
+                      <Stepper
+                        label="Ziehzeit"
+                        value={plan.steepSeconds}
+                        display={duration(plan.steepSeconds)}
+                        canDecrease={plan.steepSeconds > 10}
+                        canIncrease={plan.steepSeconds < 1800}
+                        onDecrease={() => setSteepOverride(Math.max(10, plan.steepSeconds - 10))}
+                        onIncrease={() => setSteepOverride(Math.min(1800, plan.steepSeconds + 10))}
+                      />
+                    </div>
+                  </Card>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      tone="secondary"
+                      icon="haken"
+                      onClick={() => {
+                        setBrewingOverride(tea.id, {
+                          ...effectiveBrewing(tea),
+                          vessel: vesselId,
+                          vesselSizeMl: sizeMl,
+                          teaGrams: plan.teaGrams,
+                          temperatureC: plan.temperatureC,
+                          steepSeconds: plan.steepSeconds,
+                        })
+                        toast('success', 'Als deine Einstellung gemerkt')
+                      }}
+                    >
+                      Als meine Einstellung merken
+                    </Button>
+                    {ownBrewing && (
+                      <Button
+                        tone="ghost"
+                        onClick={() => {
+                          setBrewingOverride(tea.id, null)
+                          setTempOverride(undefined)
+                          setSteepOverride(undefined)
+                          setGramsOverride(undefined)
+                          setVesselId(tea.brewing.vessel)
+                          setSizeMl(tea.brewing.vesselSizeMl)
+                          toast('info', 'Zurück auf die Empfehlung')
+                        }}
+                      >
+                        Zurücksetzen
+                      </Button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-caption text-ink-3">
+                    Gemerkt wird alles auf dieser Seite: Gefäß, Menge, Temperatur und Ziehzeit.
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
+
           <div className="h-28" />
         </div>
 
@@ -487,10 +592,16 @@ export function Brew({
                 seconds={timer.remainingSeconds}
                 progress={timer.progress}
                 running={timer.running}
-                label={timerFinished ? 'Zeit ist um' : timer.running ? 'läuft' : 'pausiert'}
+                label={
+                  timerFinished
+                    ? overdueLabel(timer.overdueSeconds)
+                    : timer.running
+                      ? 'läuft'
+                      : 'pausiert'
+                }
               />
               <p className="sr-only" aria-live="polite">
-                {timerFinished ? 'Die Ziehzeit ist abgelaufen.' : ''}
+                {timerFinished ? overdueLabel(timer.overdueSeconds) : ''}
               </p>
               <div className="mt-5 flex items-center gap-2">
                 <Button

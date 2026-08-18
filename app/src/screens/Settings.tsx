@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { VESSELS, VESSEL_ORDER, VESSEL_SIZES, VESSEL_SIZE_LABEL } from '../data/vessels'
 import type { ThemeMode, VesselId } from '../types'
@@ -14,6 +14,9 @@ import {
   TextInput,
 } from '../components/ui'
 import { Icon } from '../components/Icon'
+import { previewSound } from '../lib/feedback'
+import { BackupError, type Backup, buildBackup, parseBackup, shareBackup } from '../lib/backup'
+import { formatDate } from '../lib/format'
 
 export function Settings() {
   const settings = useStore((state) => state.settings)
@@ -21,9 +24,37 @@ export function Settings() {
   const collection = useStore((state) => state.collection)
   const journal = useStore((state) => state.journal)
   const clearCollection = useStore((state) => state.clearCollection)
+  const favorites = useStore((state) => state.favorites)
+  const replaceAll = useStore((state) => state.replaceAll)
   const toast = useStore((state) => state.toast)
 
   const [confirmClear, setConfirmClear] = useState(false)
+  const [pendingImport, setPendingImport] = useState<Backup | null>(null)
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const exportData = async () => {
+    setBusy(true)
+    try {
+      const result = await shareBackup(
+        buildBackup({ collection, journal, favorites, settings })
+      )
+      if (result === 'geladen') toast('success', 'Sicherung heruntergeladen')
+      else if (result === 'geteilt') toast('success', 'Sicherung erstellt')
+    } catch {
+      toast('danger', 'Die Sicherung konnte nicht erstellt werden.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const readFile = async (file: File) => {
+    try {
+      setPendingImport(parseBackup(await file.text()))
+    } catch (error) {
+      toast('danger', error instanceof BackupError ? error.message : 'Die Datei ließ sich nicht lesen.')
+    }
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -117,7 +148,10 @@ export function Settings() {
               label="Signalton"
               hint="Ein kurzer Ton, wenn die Ziehzeit abgelaufen ist."
               checked={settings.sound}
-              onChange={(sound) => updateSettings({ sound })}
+              onChange={(sound) => {
+                updateSettings({ sound })
+                if (sound) previewSound()
+              }}
             />
             <Switch
               label="Vibration"
@@ -148,8 +182,42 @@ export function Settings() {
             </span>
           </p>
 
+          <div className="mt-4 space-y-2">
+            <Button
+              tone="secondary"
+              block
+              icon="hoch"
+              loading={busy}
+              onClick={exportData}
+              disabled={collection.length === 0 && journal.length === 0}
+            >
+              Sicherung erstellen
+            </Button>
+            <Button tone="secondary" block icon="runter" onClick={() => fileRef.current?.click()}>
+              Sicherung einspielen
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-hidden="true"
+              tabIndex={-1}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (file) void readFile(file)
+              }}
+            />
+            <p className="text-caption text-ink-3">
+              Die Sicherung enthält Sammlung, Journal, Favoriten und Einstellungen. Leg sie
+              irgendwo ab, wo du sie wiederfindest – ohne sie ist alles weg, sobald du die
+              Website-Daten löschst.
+            </p>
+          </div>
+
           {collection.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-6">
               <Button tone="danger" block icon="papierkorb" onClick={() => setConfirmClear(true)}>
                 Sammlung leeren
               </Button>
@@ -165,6 +233,30 @@ export function Settings() {
           <p className="text-caption text-ink-3">Tee-Assistent · Version 2.0</p>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={pendingImport !== null}
+        title="Sicherung einspielen?"
+        body={
+          pendingImport
+            ? `Die Sicherung${pendingImport.createdAt ? ` vom ${formatDate(pendingImport.createdAt)}` : ''} enthält ${pendingImport.collection.length} ${pendingImport.collection.length === 1 ? 'Tee' : 'Tees'} und ${pendingImport.journal.length} ${pendingImport.journal.length === 1 ? 'Eintrag' : 'Einträge'}. Sie ersetzt deinen jetzigen Stand vollständig.`
+            : ''
+        }
+        confirmLabel="Einspielen"
+        onCancel={() => setPendingImport(null)}
+        onConfirm={() => {
+          if (pendingImport) {
+            replaceAll({
+              collection: pendingImport.collection,
+              journal: pendingImport.journal,
+              favorites: pendingImport.favorites,
+              settings: pendingImport.settings,
+            })
+            toast('success', 'Sicherung eingespielt')
+          }
+          setPendingImport(null)
+        }}
+      />
 
       <ConfirmDialog
         open={confirmClear}

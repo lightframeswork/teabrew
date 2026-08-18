@@ -245,9 +245,8 @@ export function Sheet({
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end">
-      <button
-        type="button"
-        aria-label="Schließen"
+      <div
+        aria-hidden="true"
         onClick={onClose}
         className="absolute inset-0 bg-ink/35 anim-fade"
       />
@@ -305,9 +304,8 @@ export function ConfirmDialog({
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center px-8">
-      <button
-        type="button"
-        aria-label="Abbrechen"
+      <div
+        aria-hidden="true"
         onClick={onCancel}
         className="absolute inset-0 bg-ink/40 anim-fade"
       />

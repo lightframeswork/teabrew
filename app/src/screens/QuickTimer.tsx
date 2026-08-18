@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { useTimer } from '../lib/useTimer'
 import { requestWakeLock, signalDone } from '../lib/feedback'
-import { duration } from '../lib/format'
+import { duration, overdueLabel } from '../lib/format'
 import { ScreenHeader } from '../components/Shell'
 import { Button, SectionLabel } from '../components/ui'
 import { TimerRing } from '../components/TimerRing'
@@ -57,7 +57,7 @@ export function QuickTimer({ onBack }: { onBack: () => void }) {
             running={timer.running}
             label={
               finished
-                ? 'Zeit ist um'
+                ? overdueLabel(timer.overdueSeconds)
                 : timer.running
                   ? 'läuft'
                   : idle
@@ -66,7 +66,7 @@ export function QuickTimer({ onBack }: { onBack: () => void }) {
             }
           />
           <p className="sr-only" aria-live="polite">
-            {finished ? 'Die Ziehzeit ist abgelaufen.' : ''}
+            {finished ? overdueLabel(timer.overdueSeconds) : ''}
           </p>
 
           <div className="mt-6 flex items-center gap-2">

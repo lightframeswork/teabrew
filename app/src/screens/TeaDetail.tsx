@@ -4,7 +4,7 @@ import { libraryTea } from '../data/teas'
 import { category } from '../data/categories'
 import { VESSELS } from '../data/vessels'
 import { CAFFEINE_LABEL, type Tea } from '../types'
-import { buildPlan, resteepSummary } from '../lib/brewing'
+import { buildPlan, effectiveBrewing, resteepSummary } from '../lib/brewing'
 import { celsius, duration, grams, ml } from '../lib/format'
 import { ScreenHeader } from '../components/Shell'
 import { Button, Card, ConfirmDialog, IconButton, SectionLabel, TextArea } from '../components/ui'
@@ -15,16 +15,19 @@ export function TeaDetail({
   teaId,
   onBack,
   onBrew,
+  onEdit,
 }: {
   teaId: string
   onBack: () => void
   onBrew: (id: string) => void
+  onEdit: (id: string) => void
 }) {
   const collection = useStore((state) => state.collection)
   const favorites = useStore((state) => state.favorites)
   const toggleFavorite = useStore((state) => state.toggleFavorite)
   const updateNotes = useStore((state) => state.updateNotes)
   const removeTea = useStore((state) => state.removeTea)
+  const setBrewingOverride = useStore((state) => state.setBrewingOverride)
   const addTea = useStore((state) => state.addTea)
   const toast = useStore((state) => state.toast)
 
@@ -38,16 +41,14 @@ export function TeaDetail({
     setNotes(owned?.personalNotes ?? '')
   }, [owned?.id, owned?.personalNotes])
 
-  const plan = useMemo(
-    () =>
-      tea
-        ? buildPlan(tea, {
-            vesselId: tea.category === 'matcha' ? 'tasse' : tea.brewing.vessel,
-            sizeMl: tea.brewing.vesselSizeMl,
-          })
-        : null,
-    [tea]
-  )
+  const plan = useMemo(() => {
+    if (!tea) return null
+    const brewing = effectiveBrewing(tea)
+    return buildPlan(tea, {
+      vesselId: tea.category === 'matcha' ? 'tasse' : brewing.vessel,
+      sizeMl: brewing.vesselSizeMl,
+    })
+  }, [tea])
 
   if (!tea || !plan) {
     return (
@@ -134,13 +135,32 @@ export function TeaDetail({
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-3">
           <span className="inline-flex items-center gap-1">
             <Icon name="kanne" size={13} />
-            {isMatcha ? 'Chawan' : VESSELS[tea.brewing.vessel].label}
+            {isMatcha ? 'Chawan' : VESSELS[effectiveBrewing(tea).vessel].label}
           </span>
           <span className="inline-flex items-center gap-1">
             <Icon name="info" size={13} />
             {CAFFEINE_LABEL[tea.caffeine]}
           </span>
         </div>
+
+        {tea.brewingOverride && (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-sunken px-3 py-2">
+            <span className="flex items-center gap-1.5 text-caption text-ink-2">
+              <Icon name="stift" size={13} />
+              Deine Einstellung, nicht die Empfehlung
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setBrewingOverride(tea.id, null)
+                toast('info', 'Zurück auf die Empfehlung')
+              }}
+              className="pressable-subtle shrink-0 text-caption font-medium text-accent"
+            >
+              Zurücksetzen
+            </button>
+          </div>
+        )}
 
         {resteep && (
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-accent/8 px-3 py-2.5 text-footnote text-accent">
@@ -220,7 +240,17 @@ export function TeaDetail({
         )}
 
         {owned && (
-          <div className="mt-7 border-t border-line pt-4">
+          <div className="mt-7 space-y-1 border-t border-line pt-4">
+            {tea.custom && (
+              <button
+                type="button"
+                onClick={() => onEdit(tea.id)}
+                className="pressable-subtle flex min-h-[44px] items-center gap-2 text-footnote text-ink-2"
+              >
+                <Icon name="stift" size={16} />
+                Diesen Tee bearbeiten
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { JournalEntry, Settings, Tea, Toast } from '../types'
+import type { BrewingSpec, JournalEntry, Settings, Tea, Toast } from '../types'
 import { libraryTea } from '../data/teas'
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,14 +25,17 @@ interface State {
   removeTea: (id: string) => void
   clearCollection: () => void
   updateNotes: (id: string, notes: string) => void
-  updateRemaining: (id: string, grams: number) => void
+  updateTea: (tea: Tea) => void
+  setBrewingOverride: (id: string, spec: BrewingSpec | null) => void
   toggleFavorite: (id: string) => void
 
   addJournalEntry: (entry: Omit<JournalEntry, 'id'>) => void
+  updateJournalEntry: (entry: JournalEntry) => void
   removeJournalEntry: (id: string) => void
 
   updateSettings: (patch: Partial<Settings>) => void
   completeOnboarding: () => void
+  replaceAll: (data: { collection: Tea[]; journal: JournalEntry[]; favorites: string[]; settings: Partial<Settings> }) => void
 
   toast: (tone: Toast['tone'], message: string) => void
   dismissToast: (id: string) => void
@@ -76,10 +79,13 @@ export const useStore = create<State>()(
           ),
         }),
 
-      updateRemaining: (id, grams) =>
+      updateTea: (tea) =>
+        set({ collection: get().collection.map((t) => (t.id === tea.id ? tea : t)) }),
+
+      setBrewingOverride: (id, spec) =>
         set({
           collection: get().collection.map((t) =>
-            t.id === id ? { ...t, remainingGrams: Math.max(0, grams) } : t
+            t.id === id ? { ...t, brewingOverride: spec ?? undefined } : t
           ),
         }),
 
@@ -95,11 +101,26 @@ export const useStore = create<State>()(
       addJournalEntry: (entry) =>
         set({ journal: [{ ...entry, id: newId() }, ...get().journal] }),
 
+      updateJournalEntry: (entry) =>
+        set({ journal: get().journal.map((e) => (e.id === entry.id ? entry : e)) }),
+
       removeJournalEntry: (id) => set({ journal: get().journal.filter((e) => e.id !== id) }),
 
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),
 
       completeOnboarding: () => set({ onboarded: true }),
+
+      // Wird nur beim Einspielen einer Sicherung benutzt. Einstellungen werden
+      // über die Vorgaben gelegt, damit eine ältere Sicherung keine Felder
+      // löscht, die es damals noch nicht gab.
+      replaceAll: ({ collection, journal, favorites, settings }) =>
+        set({
+          collection,
+          journal,
+          favorites,
+          settings: { ...DEFAULT_SETTINGS, ...get().settings, ...settings },
+          onboarded: true,
+        }),
 
       toast: (tone, message) => {
         const id = newId()

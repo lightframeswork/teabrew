@@ -70,6 +70,19 @@ export function signalStep() {
   vibrate(18)
 }
 
+/**
+ * Einmaliges Vorspielen beim Einschalten in den Einstellungen. Läuft bewusst
+ * an der Einstellung vorbei: Man schaltet den Ton ein und will genau in dem
+ * Moment hören, worauf man sich einlässt.
+ */
+export function previewSound() {
+  const wasEnabled = enabledSound
+  enabledSound = true
+  bell(880, 1.1)
+  bell(1318.5, 1.3, 0.14, 0.13)
+  enabledSound = wasEnabled
+}
+
 /** Etwas ist schiefgelaufen oder wurde gelöscht. */
 export function signalWarn() {
   bell(320, 0.5, 0, 0.14)

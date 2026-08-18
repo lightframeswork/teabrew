@@ -84,11 +84,8 @@ export interface Tea {
   custom?: boolean
   addedDate?: string
   personalNotes?: string
-  vendor?: string
-  price?: number
-  harvest?: string
-  packageGrams?: number
-  remainingGrams?: number
+  /** Abweichende Zubereitung, die für diesen Tee gemerkt wurde. */
+  brewingOverride?: BrewingSpec
 }
 
 export type MatchaStyle = 'usucha' | 'koicha' | 'latte'

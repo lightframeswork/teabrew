@@ -11,6 +11,8 @@ export function useTimer(onComplete?: () => void) {
   const [remainingMs, setRemainingMs] = useState(0)
   const [totalMs, setTotalMs] = useState(0)
   const [running, setRunning] = useState(false)
+  /** Wie lange die Zeit schon abgelaufen ist. */
+  const [overdueMs, setOverdueMs] = useState(0)
 
   const deadlineRef = useRef(0)
   const frameRef = useRef(0)
@@ -26,6 +28,7 @@ export function useTimer(onComplete?: () => void) {
     deadlineRef.current = Date.now() + ms
     setTotalMs(ms)
     setRemainingMs(ms)
+    setOverdueMs(0)
     setRunning(ms > 0)
   }, [])
 
@@ -33,6 +36,7 @@ export function useTimer(onComplete?: () => void) {
     setRunning(false)
     setRemainingMs(0)
     setTotalMs(0)
+    setOverdueMs(0)
     deadlineRef.current = 0
   }, [])
 
@@ -71,6 +75,7 @@ export function useTimer(onComplete?: () => void) {
       const left = deadlineRef.current - Date.now()
       if (left <= 0) {
         setRemainingMs(0)
+        setOverdueMs(-left)
         setRunning(false)
         completeRef.current?.()
         return
@@ -86,8 +91,49 @@ export function useTimer(onComplete?: () => void) {
     }
   }, [running])
 
+  // iOS friert die Seite im Hintergrund ein. Kommt sie zurück, wird sofort
+  // nachgerechnet – sonst behauptet die Anzeige, es liefe noch etwas.
+  useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState !== 'visible') return
+      if (deadlineRef.current === 0) return
+      const left = deadlineRef.current - Date.now()
+      if (left <= 0) setOverdueMs(-left)
+    }
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [])
+
+  // Solange die Zeit abgelaufen ist und niemand neu startet, läuft die
+  // Nachlaufanzeige minütlich mit.
+  useEffect(() => {
+    if (overdueMs <= 0 || running) return
+    const id = window.setInterval(() => {
+      if (deadlineRef.current === 0) return
+      setOverdueMs(Math.max(0, Date.now() - deadlineRef.current))
+    }, 10_000)
+    return () => window.clearInterval(id)
+  }, [overdueMs, running])
+
   const remainingSeconds = Math.ceil(remainingMs / 1000)
+  const overdueSeconds = Math.floor(overdueMs / 1000)
   const progress = totalMs > 0 ? 1 - remainingMs / totalMs : 0
 
-  return { remainingSeconds, remainingMs, totalMs, running, progress, start, stop, toggle, reset, addSeconds }
+  return {
+    remainingSeconds,
+    remainingMs,
+    overdueSeconds,
+    totalMs,
+    running,
+    progress,
+    start,
+    stop,
+    toggle,
+    reset,
+    addSeconds,
+  }
 }

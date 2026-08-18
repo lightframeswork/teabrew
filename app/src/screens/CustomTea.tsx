@@ -60,11 +60,48 @@ function toNumber(value: string): number {
   return Number(value.replace(',', '.'))
 }
 
-export function CustomTea({ onBack, onSaved }: { onBack: () => void; onSaved: (id: string) => void }) {
+/** Bestehenden Tee ins Formular übertragen. */
+function toDraft(tea: Tea): Draft {
+  const b = tea.brewing
+  return {
+    name: tea.name,
+    brand: tea.brand === 'Eigener Tee' ? '' : tea.brand,
+    category: tea.category,
+    variety: tea.variety,
+    origin: tea.origin === 'ohne Angabe' ? '' : tea.origin,
+    description: tea.description === 'Selbst angelegt – ohne Beschreibung.' ? '' : tea.description,
+    caffeine: tea.caffeine,
+    vessel: b.vessel,
+    vesselSizeMl: String(b.vesselSizeMl),
+    teaGrams: String(b.teaGrams).replace('.', ','),
+    temperatureC: String(b.temperatureC),
+    steepMinutes: String(Math.floor(b.steepSeconds / 60)),
+    steepSeconds: String(b.steepSeconds % 60),
+    preheatVessel: b.preheatVessel,
+    rinse: b.rinse,
+    resteeps: String(b.resteeps?.max ?? 0),
+    tags: tea.tags.join(', '),
+    notes: tea.personalNotes ?? '',
+  }
+}
+
+export function CustomTea({
+  editId,
+  onBack,
+  onSaved,
+}: {
+  /** Gesetzt, wenn ein bestehender eigener Tee bearbeitet wird. */
+  editId?: string
+  onBack: () => void
+  onSaved: (id: string) => void
+}) {
   const addTea = useStore((state) => state.addTea)
+  const updateTea = useStore((state) => state.updateTea)
+  const collection = useStore((state) => state.collection)
   const toast = useStore((state) => state.toast)
 
-  const [draft, setDraft] = useState<Draft>(EMPTY)
+  const existing = editId ? collection.find((t) => t.id === editId) : undefined
+  const [draft, setDraft] = useState<Draft>(() => (existing ? toDraft(existing) : EMPTY))
   const [submitted, setSubmitted] = useState(false)
   const formRef = useRef<HTMLDivElement>(null)
 
@@ -105,7 +142,7 @@ export function CustomTea({ onBack, onSaved }: { onBack: () => void; onSaved: (i
 
     const steep = Math.round(toNumber(draft.steepMinutes) * 60 + toNumber(draft.steepSeconds))
     const resteeps = Math.max(0, Math.round(toNumber(draft.resteeps) || 0))
-    const id = `eigener-${draft.name
+    const id = existing ? existing.id : `eigener-${draft.name
       .toLowerCase()
       .replace(/ä/g, 'ae')
       .replace(/ö/g, 'oe')
@@ -145,8 +182,13 @@ export function CustomTea({ onBack, onSaved }: { onBack: () => void; onSaved: (i
       },
     }
 
-    addTea(tea)
-    toast('success', `${tea.name} angelegt`)
+    if (existing) {
+      updateTea({ ...existing, ...tea, addedDate: existing.addedDate })
+      toast('success', `${tea.name} aktualisiert`)
+    } else {
+      addTea(tea)
+      toast('success', `${tea.name} angelegt`)
+    }
     onSaved(id)
   }
 
@@ -154,7 +196,11 @@ export function CustomTea({ onBack, onSaved }: { onBack: () => void; onSaved: (i
 
   return (
     <div className="flex h-full flex-col">
-      <ScreenHeader title="Eigener Tee" subtitle="Nur der Name ist Pflicht" onBack={onBack} />
+      <ScreenHeader
+        title={existing ? 'Tee bearbeiten' : 'Eigener Tee'}
+        subtitle={existing ? existing.brand : 'Nur der Name ist Pflicht'}
+        onBack={onBack}
+      />
 
       <div ref={formRef} className="scroll-area flex-1 px-gutter">
         <section className="pt-2">
@@ -426,7 +472,7 @@ export function CustomTea({ onBack, onSaved }: { onBack: () => void; onSaved: (i
 
       <div className="material material-bottom absolute inset-x-0 bottom-0 z-20 px-gutter pb-[calc(var(--safe-bottom)+14px)] pt-3">
         <Button block icon="haken" onClick={save}>
-          Tee speichern
+          {existing ? 'Änderungen speichern' : 'Tee speichern'}
         </Button>
       </div>
     </div>

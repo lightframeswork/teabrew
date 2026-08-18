@@ -23,7 +23,7 @@ type Route =
   | { name: 'timer' }
   | { name: 'journal' }
   | { name: 'entdecken' }
-  | { name: 'eigenerTee' }
+  | { name: 'eigenerTee'; editId?: string }
   | { name: 'einstellungen' }
 
 const ROOTS: Record<TabId, Route> = {
@@ -166,6 +166,7 @@ export function App() {
             teaId={route.teaId}
             onBack={pop}
             onBrew={(id) => push({ name: 'zubereiten', teaId: id })}
+            onEdit={(id) => push({ name: 'eigenerTee', editId: id })}
           />
         )
       case 'zubereiten':
@@ -173,12 +174,13 @@ export function App() {
       case 'timer':
         return <QuickTimer onBack={pop} />
       case 'journal':
-        return <Journal onOpenLibrary={openLibrary} />
+        return <Journal onOpenLibrary={openLibrary} onOpenTea={openTea} />
       case 'entdecken':
         return <Library onOpenTea={openTea} onCreateOwn={() => push({ name: 'eigenerTee' })} />
       case 'eigenerTee':
         return (
           <CustomTea
+            editId={route.editId}
             onBack={pop}
             onSaved={(id) => {
               setStacks((current) => ({

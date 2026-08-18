@@ -113,6 +113,19 @@ export function formatDayLabel(iso: string): string {
   return DATE_FULL.format(date)
 }
 
+/**
+ * Wie lange der Tee schon fertig steht. Wichtiger Fall: Man legt das Telefon
+ * weg, die Seite wird eingefroren, und beim Zurückkommen soll nicht so getan
+ * werden, als sei gerade eben abgeläutet worden.
+ */
+export function overdueLabel(seconds: number): string {
+  if (seconds < 45) return 'Fertig'
+  if (seconds < 90) return 'Seit einer Minute fertig'
+  if (seconds < 3600) return `Seit ${Math.round(seconds / 60)} Minuten fertig`
+  const hours = Math.floor(seconds / 3600)
+  return hours === 1 ? 'Seit über einer Stunde fertig' : `Seit ${hours} Stunden fertig`
+}
+
 export function greeting(hour: number): string {
   if (hour >= 5 && hour < 11) return 'Guten Morgen'
   if (hour >= 11 && hour < 18) return 'Guten Tag'

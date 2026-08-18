@@ -12,6 +12,19 @@ import { celsius, duration, grams, ml, spokenDuration } from './format'
  * falsches Gefäß stehen.
  */
 
+/**
+ * Die Zubereitung, die für diesen Tee gilt: die eigene, falls eine gemerkt
+ * wurde, sonst die aus der Bibliothek.
+ */
+export function effectiveBrewing(tea: Tea): BrewingSpec {
+  return tea.brewingOverride ?? tea.brewing
+}
+
+/** Weicht die gemerkte Zubereitung überhaupt von der Bibliothek ab? */
+export function hasOwnBrewing(tea: Tea): boolean {
+  return tea.brewingOverride !== undefined
+}
+
 export interface BrewPlan {
   vessel: VesselId
   waterMl: number
@@ -369,8 +382,19 @@ function matchaSteps(style: MatchaStyle): BrewStep[] {
 
 export function buildPlan(
   tea: Tea,
-  options: { vesselId: VesselId; sizeMl: number; overrideGrams?: number; matcha?: MatchaStyle }
+  options: {
+    vesselId: VesselId
+    sizeMl: number
+    overrideGrams?: number
+    matcha?: MatchaStyle
+    /** Feinjustierung; ohne Angabe gilt der Wert des Tees. */
+    temperatureC?: number
+    steepSeconds?: number
+  }
 ): BrewPlan {
+  const base = effectiveBrewing(tea)
+  const temperatureC = options.temperatureC ?? base.temperatureC
+  const steepSeconds = options.steepSeconds ?? base.steepSeconds
   if (tea.category === 'matcha') {
     const preset = matchaPreset(options.matcha ?? 'usucha')
     return {
@@ -386,7 +410,7 @@ export function buildPlan(
     }
   }
 
-  const scaled = scaleBrewing(tea.brewing, options.sizeMl, options.overrideGrams)
+  const scaled = scaleBrewing(base, options.sizeMl, options.overrideGrams)
 
   if (options.vesselId === 'kaltaufguss') {
     const coldGrams = options.overrideGrams ?? Math.round(scaled.teaGrams * 1.5 * 2) / 2
@@ -407,23 +431,23 @@ export function buildPlan(
     vesselId: options.vesselId,
     waterMl: scaled.waterMl,
     teaGrams: scaled.teaGrams,
-    temperatureC: tea.brewing.temperatureC,
-    steepSeconds: tea.brewing.steepSeconds,
-    preheatVessel: tea.brewing.preheatVessel,
-    preheatCups: tea.brewing.preheatCups,
-    rinse: tea.brewing.rinse,
+    temperatureC,
+    steepSeconds,
+    preheatVessel: base.preheatVessel,
+    preheatCups: base.preheatCups,
+    rinse: base.rinse,
   })
 
   return {
     vessel: options.vesselId,
     waterMl: scaled.waterMl,
     teaGrams: scaled.teaGrams,
-    temperatureC: tea.brewing.temperatureC,
-    steepSeconds: tea.brewing.steepSeconds,
+    temperatureC,
+    steepSeconds,
     suggestedGrams: scaled.suggestedGrams,
     capped: scaled.capped,
     steps,
-    resteeps: tea.brewing.resteeps,
+    resteeps: base.resteeps,
   }
 }
 

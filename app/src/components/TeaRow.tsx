@@ -1,4 +1,5 @@
 import type { CategoryId, Tea } from '../types'
+import { effectiveBrewing } from '../lib/brewing'
 import { celsius, duration, grams } from '../lib/format'
 import { cn } from '../lib/cn'
 import { Icon } from './Icon'
@@ -53,6 +54,7 @@ export function TeaRow({
   index?: number
   showBrewHint?: boolean
 }) {
+  const brewing = effectiveBrewing(tea)
   return (
     <li style={{ '--i': index } as React.CSSProperties}>
       <div className="flex items-center gap-1">
@@ -71,8 +73,8 @@ export function TeaRow({
                   {' · '}
                   <span className="tnum">
                     {tea.category === 'matcha'
-                      ? `${grams(tea.brewing.teaGrams)} · ${celsius(tea.brewing.temperatureC)}`
-                      : `${celsius(tea.brewing.temperatureC)} · ${duration(tea.brewing.steepSeconds)} · ${grams(tea.brewing.teaGrams)}`}
+                      ? `${grams(brewing.teaGrams)} · ${celsius(brewing.temperatureC)}`
+                      : `${celsius(brewing.temperatureC)} · ${duration(brewing.steepSeconds)} · ${grams(brewing.teaGrams)}`}
                   </span>
                 </>
               )}
