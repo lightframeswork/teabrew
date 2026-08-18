@@ -10,7 +10,12 @@
  *    Versionswechsel gelöscht.
  */
 
-const VERSION = 'chado-v2'
+// Beide Werte setzt tools/publish.mjs beim Bauen ein: der Name enthält den
+// Hash des Bundles, damit ein neuer Build den alten Cache verwirft, und die
+// Liste enthält die gehashten Dateinamen, die sonst niemand kennen kann.
+const VERSION = 'chado-DLGqguov'
+const BUILD_ASSETS = ["assets/index-DLGqguov.js","assets/index-DNE5o-Jz.css"]
+
 const BASE = self.location.pathname.replace(/\/[^/]*$/, '/') || '/'
 const SHELL = [
   BASE,
@@ -20,13 +25,18 @@ const SHELL = [
   `${BASE}icon-512.png`,
   `${BASE}fonts/fraunces-latin.woff2`,
   `${BASE}fonts/fraunces-latin-ext.woff2`,
+  ...BUILD_ASSETS.map((name) => `${BASE}${name}`),
 ]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(VERSION)
-      .then((cache) => cache.addAll(SHELL))
+      .then((cache) =>
+        // Einzeln statt addAll: Eine Datei, die es nicht gibt, darf nicht die
+        // gesamte Installation verhindern.
+        Promise.all(SHELL.map((url) => cache.add(url).catch(() => {})))
+      )
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   )

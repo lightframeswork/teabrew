@@ -168,6 +168,14 @@
     background: transparent;
   }
 
+  /* Suchfelder haben eine eigene Löschtaste – die des Browsers würde daneben
+     ein zweites Kreuz zeichnen. */
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   /* Ein deutlich sichtbarer Sprung zum Inhalt für Tastaturnutzung. */
   .skip-link {
     position: absolute;

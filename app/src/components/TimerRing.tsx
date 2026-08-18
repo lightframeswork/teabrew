@@ -42,7 +42,9 @@ export function TimerRing({
           fill="none"
           stroke="rgb(var(--accent))"
           strokeWidth={stroke}
-          strokeLinecap="round"
+          // Bei null Fortschritt zeichnet eine runde Kappe einen Punkt auf den
+          // leeren Ring – erst ab sichtbarem Fortschritt gerundet.
+          strokeLinecap={clamped > 0.005 ? 'round' : 'butt'}
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - clamped)}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
