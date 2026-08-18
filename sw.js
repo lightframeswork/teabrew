@@ -13,8 +13,8 @@
 // Beide Werte setzt tools/publish.mjs beim Bauen ein: der Name enthält den
 // Hash des Bundles, damit ein neuer Build den alten Cache verwirft, und die
 // Liste enthält die gehashten Dateinamen, die sonst niemand kennen kann.
-const VERSION = 'chado-Dcuu_4qg'
-const BUILD_ASSETS = ["assets/index-Dcuu_4qg.js","assets/index-ihbtask7.css"]
+const VERSION = 'chado-BkJAgYM-'
+const BUILD_ASSETS = ["assets/index-BkJAgYM-.js","assets/index-oSblRuZE.css"]
 
 const BASE = self.location.pathname.replace(/\/[^/]*$/, '/') || '/'
 const SHELL = [

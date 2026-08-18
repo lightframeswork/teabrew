@@ -6,7 +6,6 @@ import { greeting } from '../lib/format'
 import { Button, EmptyState, SectionLabel } from '../components/ui'
 import { CategoryTile, TeaRow } from '../components/TeaRow'
 import { Icon } from '../components/Icon'
-import { Crane } from '../components/Crane'
 
 export function Collection({
   onOpenSearch,
@@ -164,18 +163,15 @@ export function Collection({
             </ul>
           </section>
 
-          <div className="px-gutter pt-6">
+          <div className="px-gutter pb-8 pt-6">
             <Button tone="secondary" block icon="plus" onClick={onOpenLibrary}>
               Weitere Tees hinzufügen
             </Button>
           </div>
-
-          {/* Schlusszeichen am Ende der Liste – hier ist Platz, im Kopf nicht. */}
-          <div className="flex justify-center py-10">
-            <Crane size={150} className="text-ink/[0.09]" />
-          </div>
         </>
       )}
+
+      <div className="h-4" />
     </div>
   )
 }
